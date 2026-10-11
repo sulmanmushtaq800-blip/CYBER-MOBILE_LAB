@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBERLAB 3D - AI Mobile Diagnostics & Repair</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            bg: '#060913',
+                            card: 'rgba(12, 20, 39, 0.75)',
+                            border: 'rgba(0, 242, 254, 0.25)',
+                            cyan: '#00f2fe',
+                            violet: '#9d4edd',
+                            neon: '#39ff14',
+                            pink: '#ff007f'
+                        }
+                    },
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        rajdhani: ['Rajdhani', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #060913;
+            color: #e2e8f0;
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: rgba(10, 16, 32, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 242, 254, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+        }
+
+        .glass-panel-glow {
+            background: rgba(12, 22, 45, 0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 242, 254, 0.4);
+            box-shadow: 0 0 25px rgba(0, 242, 254, 0.15), inset 0 0 15px rgba(0, 242, 254, 0.1);
+        }
+
+        .cyber-btn {
+            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            color: #060913;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+
+        .cyber-btn:hover {
+            box-shadow: 0 0 25px rgba(0, 242, 254, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .cyber-btn-outline {
+            border: 1px solid #00f2fe;
+            background: rgba(0, 242, 254, 0.05);
+            color: #00f2fe;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+
+        .cyber-btn-outline:hover {
+            background: rgba(0, 242, 254, 0.2);
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.4);
+            color: #fff;
+        }
+
+        /* Glowing text effects */
+        .glow-text-cyan {
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.6), 0 0 20px rgba(0, 242, 254, 0.3);
+        }
+        
+        .glow-text-pink {
+            text-shadow: 0 0 10px rgba(255, 0, 127, 0.6), 0 0 20px rgba(255, 0, 127, 0.3);
+        }
+
+        /* Grid Background Pattern */
+        .bg-grid-pattern {
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(0, 242, 254, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 242, 254, 0.05) 1px, transparent 1px);
+        }
+
+        /* Page transition styles */
+        .page-section {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+        }
+
+        .page-section.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #060913;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #00f2fe;
+            border-radius: 3px;
+        }
+
+        /* Radar scan effect */
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        .scanner-line {
+            animation: scanline 3s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-cyber-bg text-gray-100 min-h-screen bg-grid-pattern relative flex flex-col justify-between">
+
+    <div id="threejs-container" class="fixed inset-0 z-0 pointer-events-none opacity-80"></div>
+
+    <!-- Navigation Bar -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-cyber-border/40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            
+            <!-- Logo -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="navigateTo('home')">
+                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyber-cyan to-cyber-violet p-0.5 flex items-center justify-center shadow-lg shadow-cyber-cyan/20">
+                    <div class="w-full h-full bg-cyber-bg rounded-md flex items-center justify-center">
+                        <i class="fa-solid fa-microchip text-cyber-cyan text-xl"></i>
+                    </div>
+                </div>
+                <div>
+                    <span class="font-orbitron font-extrabold text-xl tracking-wider text-white">CYBER<span class="text-cyber-cyan glow-text-cyan">LAB</span></span>
+                    <span class="block text-[10px] font-mono text-cyber-cyan/80 tracking-widest uppercase">3D Diagnostics Lab</span>
+                </div>
+            </div>
+
+            <!-- Desktop Navigation -->
+            <nav class="hidden md:flex items-center space-x-1 lg:space-x-2 font-orbitron text-xs tracking-wider">
+                <button onclick="navigateTo('home')" id="nav-home" class="nav-link text-cyber-cyan px-3 py-2 rounded-md transition-all duration-200 border-b-2 border-cyber-cyan">
+                    <i class="fa-solid fa-house-laptop mr-1.5"></i> HOME
+                </button>
+                <button onclick="navigateTo('services')" id="nav-services" class="nav-link text-gray-300 hover:text-cyber-cyan px-3 py-2 rounded-md transition-all duration-200">
+                    <i class="fa-solid fa-calculator mr-1.5"></i> SERVICES & COST
+                </button>
+                <button onclick="navigateTo('tracker')" id="nav-tracker" class="nav-link text-gray-300 hover:text-cyber-cyan px-3 py-2 rounded-md transition-all duration-200">
+                    <i class="fa-solid fa-satellite-dish mr-1.5"></i> LIVE TRACKER
+                </button>
+                <button onclick="navigateTo('ai-diagnosis')" id="nav-ai-diagnosis" class="nav-link text-gray-300 hover:text-cyber-cyan px-3 py-2 rounded-md transition-all duration-200 relative">
+                    <span class="absolute -top-1 -right-1 flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyber-cyan opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-cyber-cyan"></span>
+                    </span>
+                    <i class="fa-solid fa-robot mr-1.5"></i> AI ASSISTANT
+                </button>
+                <button onclick="navigateTo('contact')" id="nav-contact" class="nav-link text-gray-300 hover:text-cyber-cyan px-3 py-2 rounded-md transition-all duration-200">
+                    <i class="fa-solid fa-location-dot mr-1.5"></i> CONTACT
+                </button>
+            </nav>
+
+            <!-- Social Media Quick Hub -->
+            <div class="hidden xl:flex items-center space-x-2 border-l border-cyber-border/40 pl-4">
+                <a href="https://wa.me/923000000000?text=Hi%20CyberLab!%20I%20need%20mobile%20repair%20services." target="_blank" class="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition-all duration-300 hover:scale-110" title="WhatsApp Direct Chat">
+                    <i class="fa-brands fa-whatsapp"></i>
+                </a>
+                <a href="https://youtube.com" target="_blank" class="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all duration-300 hover:scale-110" title="YouTube Channel">
+                    <i class="fa-brands fa-youtube"></i>
+                </a>
+                <a href="https://instagram.com" target="_blank" class="w-8 h-8 rounded-full bg-pink-500/10 border border-pink-500/40 text-pink-400 hover:bg-pink-500 hover:text-white flex items-center justify-center transition-all duration-300 hover:scale-110" title="Instagram Page">
+                    <i class="fa-brands fa-instagram"></i>
+                </a>
+                <a href="https://facebook.com" target="_blank" class="w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/40 text-blue-400 hover:bg-blue-500 hover:text-white flex items-center justify-center transition-all duration-300 hover:scale-110" title="Facebook Page">
+                    <i class="fa-brands fa-facebook-f"></i>
+                </a>
+            </div>
+
+            <!-- Mobile Menu Toggle Button -->
+            <button id="mobile-menu-btn" onclick="toggleMobileMenu()" class="md:hidden text-cyber-cyan focus:outline-none p-2 rounded-lg bg-cyber-card border border-cyber-border">
+                <i class="fa-solid fa-bars text-xl" id="menu-icon"></i>
+            </button>
+        </div>
+
+        <!-- Mobile Menu Dropdown -->
+        <div id="mobile-menu" class="hidden md:hidden glass-panel border-t border-cyber-border px-4 pt-2 pb-6 space-y-3 font-orbitron text-sm">
+            <button onclick="navigateTo('home'); toggleMobileMenu();" class="block w-full text-left py-2 text-cyber-cyan border-b border-cyber-border/20">
+                <i class="fa-solid fa-house-laptop w-6"></i> HOME
+            </button>
+            <button onclick="navigateTo('services'); toggleMobileMenu();" class="block w-full text-left py-2 text-gray-300 border-b border-cyber-border/20">
+                <i class="fa-solid fa-calculator w-6"></i> SERVICES & COST
+            </button>
+            <button onclick="navigateTo('tracker'); toggleMobileMenu();" class="block w-full text-left py-2 text-gray-300 border-b border-cyber-border/20">
+                <i class="fa-solid fa-satellite-dish w-6"></i> LIVE TRACKER
+            </button>
+            <button onclick="navigateTo('ai-diagnosis'); toggleMobileMenu();" class="block w-full text-left py-2 text-gray-300 border-b border-cyber-border/20">
+                <i class="fa-solid fa-robot w-6"></i> AI ASSISTANT
+            </button>
+            <button onclick="navigateTo('contact'); toggleMobileMenu();" class="block w-full text-left py-2 text-gray-300">
+                <i class="fa-solid fa-location-dot w-6"></i> CONTACT
+            </button>
+
+            <div class="pt-2 flex justify-around border-t border-cyber-border/40">
+                <a href="https://wa.me/923000000000" target="_blank" class="text-emerald-400 text-lg"><i class="fa-brands fa-whatsapp"></i></a>
+                <a href="https://youtube.com" target="_blank" class="text-red-400 text-lg"><i class="fa-brands fa-youtube"></i></a>
+                <a href="https://instagram.com" target="_blank" class="text-pink-400 text-lg"><i class="fa-brands fa-instagram"></i></a>
+                <a href="https://facebook.com" target="_blank" class="text-blue-400 text-lg"><i class="fa-brands fa-facebook"></i></a>
+            </div>
+        </div>
+    </header>
+
+    <main class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
+
+        <!-- ================= PAGE 1: HOME PAGE ================= -->
+        <section id="page-home" class="page-section active space-y-12">
+            
+            <!-- Hero Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center min-h-[75vh]">
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-cyber-cyan/10 border border-cyber-cyan/40 text-cyber-cyan text-xs font-mono">
+                        <span class="w-2 h-2 rounded-full bg-cyber-cyan animate-ping"></span>
+                        <span>NEXT-GEN MICRO-SOLDERING & REPAIR LAB</span>
+                    </div>
+
+                    <h1 class="font-orbitron font-black text-4xl sm:text-5xl lg:text-6xl tracking-wide leading-tight">
+                        3D PRECISION <br>
+                        <span class="bg-gradient-to-r from-cyber-cyan via-blue-400 to-cyber-violet bg-clip-text text-transparent glow-text-cyan">
+                            SMARTPHONE REPAIR
+                        </span>
+                    </h1>
+
+                    <p class="text-gray-400 text-base sm:text-lg max-w-xl font-rajdhani font-medium leading-relaxed">
+                        Experience ultra-fast, robotic-precision mobile diagnostic & hardware repairs. Original display replacements, IC chip micro-repair, and logic board recovery in under <span class="text-cyber-cyan font-bold">30 Minutes</span>.
+                    </p>
+
+                    <!-- Interactive Call to Actions -->
+                    <div class="flex flex-wrap gap-4 pt-2">
+                        <button onclick="navigateTo('services')" class="cyber-btn px-6 py-3.5 rounded-sm flex items-center space-x-2 text-sm">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span>Instant Cost Calculator</span>
+                        </button>
+                        <button onclick="navigateTo('ai-diagnosis')" class="cyber-btn-outline px-6 py-3.5 rounded-sm flex items-center space-x-2 text-sm">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>AI Auto-Diagnosis</span>
+                        </button>
+                    </div>
+
+                    <!-- Live Stats Ribbon -->
+                    <div class="grid grid-cols-3 gap-4 pt-6 border-t border-cyber-border/30 max-w-lg">
+                        <div>
+                            <div class="font-orbitron font-bold text-2xl text-cyber-cyan">99.8%</div>
+                            <div class="text-xs text-gray-400">Success Rate</div>
+                        </div>
+                        <div>
+                            <div class="font-orbitron font-bold text-2xl text-cyber-cyan">30 MIN</div>
+                            <div class="text-xs text-gray-400">Express Turnaround</div>
+                        </div>
+                        <div>
+                            <div class="font-orbitron font-bold text-2xl text-cyber-cyan">90 DAYS</div>
+                            <div class="text-xs text-gray-400">Hardware Warranty</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3D Interactive Card Showcase -->
+                <div class="lg:col-span-5 flex justify-center">
+                    <div class="w-full max-w-md glass-panel-glow p-6 rounded-2xl relative overflow-hidden group">
+                        <!-- Holographic Scan effect line -->
+                        <div class="absolute inset-0 scanner-line bg-gradient-to-b from-transparent via-cyber-cyan/20 to-transparent pointer-events-none"></div>
+
+                        <div class="flex justify-between items-center mb-4 border-b border-cyber-border/40 pb-3">
+                            <span class="font-orbitron text-xs text-cyber-cyan tracking-wider"><i class="fa-solid fa-crosshairs mr-1"></i> LIVE DIAGNOSTIC VIEW</span>
+                            <span class="bg-emerald-500/20 text-emerald-400 text-[10px] font-mono px-2 py-0.5 rounded border border-emerald-500/40">SYSTEM READY</span>
+                        </div>
+
+                        <!-- Interactive 3D Interactive Visual Box -->
+                        <div class="h-64 rounded-xl bg-cyber-bg/90 border border-cyber-border/30 flex flex-col items-center justify-center relative p-4 text-center">
+                            <div class="w-20 h-20 rounded-full bg-cyber-cyan/10 border-2 border-cyber-cyan/50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-500 shadow-lg shadow-cyber-cyan/20">
+                                <i class="fa-solid fa-mobile-screen-button text-4xl text-cyber-cyan animate-pulse"></i>
+                            </div>
+                            <h3 class="font-orbitron font-bold text-white text-lg">Interactive 3D Phone Inspection</h3>
+                            <p class="text-xs text-gray-400 mt-1 max-w-xs">Drag canvas to rotate holographic model. Hover over components to inspect circuitry.</p>
+                            
+                            <div class="mt-4 flex space-x-2">
+                                <button onclick="trigger3DAction('screen')" class="text-[10px] font-mono px-2.5 py-1 bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan rounded hover:bg-cyber-cyan/30 transition">
+                                    Test Display
+                                </button>
+                                <button onclick="trigger3DAction('battery')" class="text-[10px] font-mono px-2.5 py-1 bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan rounded hover:bg-cyber-cyan/30 transition">
+                                    Test Battery
+                                </button>
+                                <button onclick="trigger3DAction('chip')" class="text-[10px] font-mono px-2.5 py-1 bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan rounded hover:bg-cyber-cyan/30 transition">
+                                    Test Logic IC
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="3d-diag-output" class="mt-4 p-3 rounded-lg bg-cyber-card border border-cyber-border/30 text-xs font-mono text-gray-300 flex items-center justify-between">
+                            <span><i class="fa-solid fa-circle-info text-cyber-cyan mr-1.5"></i> Model Status: Clean</span>
+                            <span class="text-cyber-cyan font-bold">100% HEALTH</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Grid -->
+            <div class="space-y-6 pt-10">
+                <div class="text-center space-y-2">
+                    <h2 class="font-orbitron font-bold text-2xl sm:text-3xl text-white">LAB CAPABILITIES & SERVICES</h2>
+                    <p class="text-gray-400 text-sm max-w-md mx-auto">High-precision micro repair technology engineered for modern smartphones</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="glass-panel p-6 rounded-xl hover:border-cyber-cyan/60 transition-all duration-300 hover:-translate-y-1">
+                        <div class="w-12 h-12 rounded-lg bg-cyber-cyan/10 border border-cyber-cyan/40 text-cyber-cyan flex items-center justify-center text-xl mb-4">
+                            <i class="fa-solid fa-mobile-button"></i>
+                        </div>
+                        <h3 class="font-orbitron font-bold text-lg text-white mb-2">Display & OLED Repair</h3>
+                        <p class="text-xs text-gray-400 leading-relaxed">Original Super Retina & AMOLED screen replacements with original color calibration & touch responsiveness.</p>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-xl hover:border-cyber-cyan/60 transition-all duration-300 hover:-translate-y-1">
+                        <div class="w-12 h-12 rounded-lg bg-cyber-cyan/10 border border-cyber-cyan/40 text-cyber-cyan flex items-center justify-center text-xl mb-4">
+                            <i class="fa-solid fa-battery-charging"></i>
+                        </div>
+                        <h3 class="font-orbitron font-bold text-lg text-white mb-2">Battery Health Restore</h3>
+                        <p class="text-xs text-gray-400 leading-relaxed">Genuine high-density lithium replacement batteries with zero-cycle capacity and heat optimization.</p>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-xl hover:border-cyber-cyan/60 transition-all duration-300 hover:-translate-y-1">
+                        <div class="w-12 h-12 rounded-lg bg-cyber-cyan/10 border border-cyber-cyan/40 text-cyber-cyan flex items-center justify-center text-xl mb-4">
+                            <i class="fa-solid fa-microchip"></i>
+                        </div>
+                        <h3 class="font-orbitron font-bold text-lg text-white mb-2">Motherboard IC Repair</h3>
+                        <p class="text-xs text-gray-400 leading-relaxed">Advanced micro-soldering for Power IC, Audio IC, WiFi chips, and dead motherboard revival.</p>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-xl hover:border-cyber-cyan/60 transition-all duration-300 hover:-translate-y-1">
+                        <div class="w-12 h-12 rounded-lg bg-cyber-cyan/10 border border-cyber-cyan/40 text-cyber-cyan flex items-center justify-center text-xl mb-4">
+                            <i class="fa-solid fa-droplet-slash"></i>
+                        </div>
+                        <h3 class="font-orbitron font-bold text-lg text-white mb-2">Water Damage Fix</h3>
+                        <p class="text-xs text-gray-400 leading-relaxed">Ultrasonic chemical bath cleaning and short-circuit repair to recover water-damaged devices.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 2: SERVICES & COST CALCULATOR ================= -->
+        <section id="page-services" class="page-section space-y-8">
+            <div class="text-center space-y-3">
+                <h2 class="font-orbitron font-black text-3xl sm:text-4xl text-white">INTERACTIVE COST CALCULATOR</h2>
+                <p class="text-gray-400 text-sm max-w-lg mx-auto">Select your device model and required repairs for real-time pricing and estimated completion time.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <!-- Selection Panel -->
+                <div class="lg:col-span-8 glass-panel p-6 sm:p-8 rounded-2xl space-y-6">
+                    
+                    <!-- Step 1: Select Brand -->
+                    <div>
+                        <label class="block font-orbitron text-xs text-cyber-cyan tracking-wider mb-3">1. SELECT BRAND</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="brand-selector">
+                            <button onclick="selectBrand('apple')" id="brand-apple" class="brand-btn p-3 rounded-xl glass-panel border border-cyber-cyan text-center transition hover:border-cyber-cyan">
+                                <i class="fa-brands fa-apple text-2xl text-white mb-1 block"></i>
+                                <span class="font-orbitron text-xs">Apple</span>
+                            </button>
+                            <button onclick="selectBrand('samsung')" id="brand-samsung" class="brand-btn p-3 rounded-xl glass-panel border border-cyber-border text-center transition hover:border-cyber-cyan">
+                                <i class="fa-solid fa-mobile text-2xl text-white mb-1 block"></i>
+                                <span class="font-orbitron text-xs">Samsung</span>
+                            </button>
+                            <button onclick="selectBrand('xiaomi')" id="brand-xiaomi" class="brand-btn p-3 rounded-xl glass-panel border border-cyber-border text-center transition hover:border-cyber-cyan">
+                                <i class="fa-solid fa-signal text-2xl text-white mb-1 block"></i>
+                                <span class="font-orbitron text-xs">Xiaomi / Poco</span>
+                            </button>
+                            <button onclick="selectBrand('other')" id="brand-other" class="brand-btn p-3 rounded-xl glass-panel border border-cyber-border text-center transition hover:border-cyber-cyan">
+                                <i class="fa-solid fa-ellipsis text-2xl text-white mb-1 block"></i>
+                                <span class="font-orbitron text-xs">Others</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Select Model -->
+                    <div>
+                        <label class="block font-orbitron text-xs text-cyber-cyan tracking-wider mb-3">2. SELECT MODEL</label>
+                        <select id="model-select" onchange="calculateCost()" class="w-full bg-cyber-bg border border-cyber-border/60 rounded-xl p-3 text-white font-rajdhani text-base focus:border-cyber-cyan focus:outline-none">
+                            <option value="iphone14pro">iPhone 14 Pro / 14 Pro Max</option>
+                            <option value="iphone13">iPhone 13 / 13 Pro</option>
+                            <option value="iphone12">iPhone 12 / 12 Pro</option>
+                            <option value="iphone11">iPhone 11 / 11 Pro</option>
+                        </select>
+                    </div>
+
+                    <!-- Step 3: Select Issues -->
+                    <div>
+                        <label class="block font-orbitron text-xs text-cyber-cyan tracking-wider mb-3">3. SELECT REQUIRED REPAIRS</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label class="flex items-center space-x-3 p-3.5 rounded-xl glass-panel border border-cyber-border cursor-pointer hover:border-cyber-cyan transition">
+                                <input type="checkbox" value="screen" onchange="calculateCost()" class="issue-checkbox rounded bg-cyber-bg border-cyber-border text-cyber-cyan focus:ring-0 w-4 h-4">
+                                <span class="text-sm font-medium"><i class="fa-solid fa-mobile-screen text-cyber-cyan mr-2"></i> Screen / OLED Replacement</span>
+                            </label>
+
+                            <label class="flex items-center space-x-3 p-3.5 rounded-xl glass-panel border border-cyber-border cursor-pointer hover:border-cyber-cyan transition">
+                                <input type="checkbox" value="battery" onchange="calculateCost()" class="issue-checkbox rounded bg-cyber-bg border-cyber-border text-cyber-cyan focus:ring-0 w-4 h-4">
+                                <span class="text-sm font-medium"><i class="fa-solid fa-battery-half text-cyber-cyan mr-2"></i> Battery Replacement</span>
+                            </label>
+
+                            <label class="flex items-center space-x-3 p-3.5 rounded-xl glass-panel border border-cyber-border cursor-pointer hover:border-cyber-cyan transition">
+                                <input type="checkbox" value="charging" onchange="calculateCost()" class="issue-checkbox rounded bg-cyber-bg border-cyber-border text-cyber-cyan focus:ring-0 w-4 h-4">
+                                <span class="text-sm font-medium"><i class="fa-solid fa-plug text-cyber-cyan mr-2"></i> Charging Port Fix</span>
+                            </label>
+
+                            <label class="flex items-center space-x-3 p-3.5 rounded-xl glass-panel border border-cyber-border cursor-pointer hover:border-cyber-cyan transition">
+                                <input type="checkbox" value="ic" onchange="calculateCost()" class="issue-checkbox rounded bg-cyber-bg border-cyber-border text-cyber-cyan focus:ring-0 w-4 h-4">
+                                <span class="text-sm font-medium"><i class="fa-solid fa-microchip text-cyber-cyan mr-2"></i> Motherboard / IC Repair</span>
+                            </label>
+
+                            <label class="flex items-center space-x-3 p-3.5 rounded-xl glass-panel border border-cyber-border cursor-pointer hover:border-cyber-cyan transition">
+                                <input type="checkbox" value="water" onchange="calculateCost()" class="issue-checkbox rounded bg-cyber-bg border-cyber-border text-cyber-cyan focus:ring-0 w-4 h-4">
+                                <span class="text-sm font-medium"><i class="fa-solid fa-droplet text-cyber-cyan mr-2"></i> Water Damage Clean</span>
+                            </label>
+
+                            <label class="flex items-center space-x-3 p-3.5 rounded-xl glass-panel border border-cyber-border cursor-pointer hover:border-cyber-cyan transition">
+                                <input type="checkbox" value="software" onchange="calculateCost()" class="issue-checkbox rounded bg-cyber-bg border-cyber-border text-cyber-cyan focus:ring-0 w-4 h-4">
+                                <span class="text-sm font-medium"><i class="fa-solid fa-code text-cyber-cyan mr-2"></i> Software Flashing / Unlock</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Summary Panel -->
+                <div class="lg:col-span-4 glass-panel-glow p-6 rounded-2xl space-y-6">
+                    <h3 class="font-orbitron font-bold text-xl text-white border-b border-cyber-border/40 pb-3">ESTIMATE SUMMARY</h3>
+
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between text-gray-400">
+                            <span>Selected Brand:</span>
+                            <span id="summary-brand" class="text-white font-semibold">Apple</span>
+                        </div>
+                        <div class="flex justify-between text-gray-400">
+                            <span>Selected Model:</span>
+                            <span id="summary-model" class="text-white font-semibold">iPhone 14 Pro</span>
+                        </div>
+                        <div class="flex justify-between text-gray-400">
+                            <span>Estimated Time:</span>
+                            <span id="summary-time" class="text-cyber-cyan font-mono font-bold">30 - 45 Mins</span>
+                        </div>
+                        <div class="flex justify-between text-gray-400">
+                            <span>Hardware Warranty:</span>
+                            <span class="text-emerald-400 font-mono font-bold">90 Days</span>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-cyber-border/40 pt-4">
+                        <span class="text-xs font-orbitron text-gray-400 block mb-1">TOTAL ESTIMATED COST</span>
+                        <div id="total-price" class="font-orbitron font-black text-3xl sm:text-4xl text-cyber-cyan glow-text-cyan">$0</div>
+                    </div>
+
+                    <button onclick="bookRepairViaWhatsApp()" class="cyber-btn w-full py-4 rounded-xl flex items-center justify-center space-x-2 text-sm">
+                        <i class="fa-brands fa-whatsapp text-lg"></i>
+                        <span>Book Repair on WhatsApp</span>
+                    </button>
+
+                    <p class="text-[11px] text-gray-400 text-center">
+                        <i class="fa-solid fa-shield-halved text-cyber-cyan mr-1"></i> No fix, no fee policy applies. All repairs inspected under microscope.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 3: LIVE REPAIR TRACKER ================= -->
+        <section id="page-tracker" class="page-section space-y-8">
+            <div class="text-center space-y-3">
+                <h2 class="font-orbitron font-black text-3xl sm:text-4xl text-white">LIVE REPAIR STATUS TRACKER</h2>
+                <p class="text-gray-400 text-sm max-w-lg mx-auto">Enter your unique 4-digit Repair Order ID to monitor diagnostic & repair progress live.</p>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="max-w-xl mx-auto glass-panel p-4 rounded-2xl flex flex-col sm:flex-row gap-3">
+                <input type="text" id="tracker-input" placeholder="Enter Order ID (e.g. LAB-9921)" value="LAB-9921" class="flex-grow bg-cyber-bg border border-cyber-border rounded-xl px-4 py-3 text-white font-mono uppercase focus:outline-none focus:border-cyber-cyan">
+                <button onclick="trackOrder()" class="cyber-btn px-6 py-3 rounded-xl flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span>Track Status</span>
+                </button>
+            </div>
+
+            <!-- Order Status Result View -->
+            <div id="tracker-result" class="max-w-3xl mx-auto glass-panel-glow p-6 sm:p-8 rounded-2xl space-y-8">
+                
+                <!-- Order Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-cyber-border/40 pb-4 gap-2">
+                    <div>
+                        <span class="text-xs font-mono text-cyber-cyan uppercase">Repair Ticket #</span>
+                        <h3 class="font-orbitron font-bold text-2xl text-white" id="order-id-display">LAB-9921</h3>
+                    </div>
+                    <div class="text-left sm:text-right">
+                        <span class="text-xs font-mono text-gray-400 block">Device Model</span>
+                        <span class="font-semibold text-white" id="order-device-display">iPhone 13 Pro - Screen & Battery Fix</span>
+                    </div>
+                </div>
+
+                <!-- Animated Progress Bar -->
+                <div class="space-y-6">
+                    <div class="relative">
+                        <div class="overflow-hidden h-2.5 mb-4 text-xs flex rounded-full bg-cyber-bg border border-cyber-border/40">
+                            <div id="progress-bar" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-cyber-cyan to-cyber-violet w-[75%] transition-all duration-1000"></div>
+                        </div>
+
+                        <!-- 4 Step Indicators -->
+                        <div class="grid grid-cols-4 text-center font-orbitron text-[10px] sm:text-xs">
+                            <div class="space-y-1">
+                                <div class="w-7 h-7 mx-auto rounded-full bg-cyber-cyan text-cyber-bg flex items-center justify-center font-bold">1</div>
+                                <span class="text-cyber-cyan block">Checked In</span>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="w-7 h-7 mx-auto rounded-full bg-cyber-cyan text-cyber-bg flex items-center justify-center font-bold">2</div>
+                                <span class="text-cyber-cyan block">Diagnostics</span>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="w-7 h-7 mx-auto rounded-full bg-cyber-cyan text-cyber-bg flex items-center justify-center font-bold animate-bounce">3</div>
+                                <span class="text-cyber-cyan font-bold block">In Repair</span>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="w-7 h-7 mx-auto rounded-full bg-cyber-bg border border-cyber-border text-gray-500 flex items-center justify-center font-bold">4</div>
+                                <span class="text-gray-500 block">Ready</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Log Terminal -->
+                <div class="bg-cyber-bg border border-cyber-border/60 rounded-xl p-4 font-mono text-xs space-y-2 text-gray-300">
+                    <div class="text-cyber-cyan border-b border-cyber-border/30 pb-2 flex justify-between">
+                        <span><i class="fa-solid fa-terminal mr-2"></i>TECHNICIAN LOGS</span>
+                        <span class="animate-pulse">● LIVE UPDATES</span>
+                    </div>
+                    <div class="text-gray-400">[10:15 AM] Device received & inspected under microscope.</div>
+                    <div class="text-gray-400">[10:22 AM] Thermal imaging completed. Display circuit verified.</div>
+                    <div class="text-emerald-400">[10:40 AM] Original OLED Screen & Genuine Battery installation in progress...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 4: AI REPAIR DIAGNOSTIC ASSISTANT ================= -->
+        <section id="page-ai-diagnosis" class="page-section space-y-8">
+            <div class="text-center space-y-3">
+                <h2 class="font-orbitron font-black text-3xl sm:text-4xl text-white">AI DIAGNOSTIC ASSISTANT</h2>
+                <p class="text-gray-400 text-sm max-w-lg mx-auto">Describe your mobile issue in natural language, and our AI will estimate the problem, repair difficulty, and approximate price.</p>
+            </div>
+
+            <div class="max-w-3xl mx-auto glass-panel-glow p-6 sm:p-8 rounded-2xl space-y-6">
+                <!-- AI Input Form -->
+                <div class="space-y-3">
+                    <label class="block font-orbitron text-xs text-cyber-cyan tracking-wider">DESCRIBE YOUR MOBILE PROBLEM</label>
+                    <textarea id="ai-input" rows="3" placeholder="e.g. My phone fell in water, screen flickers green and battery drains fast within 1 hour..." class="w-full bg-cyber-bg border border-cyber-border/60 rounded-xl p-4 text-white font-rajdhani text-base focus:border-cyber-cyan focus:outline-none resize-none"></textarea>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-400">Quick Samples: 
+                            <button onclick="fillAISample('Screen blank but phone rings')" class="text-cyber-cyan hover:underline ml-1">Blank Screen</button>, 
+                            <button onclick="fillAISample('Phone overheating and stuck on logo')" class="text-cyber-cyan hover:underline ml-1">Bootloop</button>
+                        </span>
+                        <button onclick="runAIDiagnosis()" class="cyber-btn px-6 py-2.5 rounded-xl flex items-center space-x-2 text-xs">
+                            <i class="fa-solid fa-brain"></i>
+                            <span>Run AI Analysis</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- AI Analysis Result Box -->
+                <div id="ai-response-box" class="hidden glass-panel p-6 rounded-xl border-l-4 border-l-cyber-cyan space-y-4">
+                    <div class="flex items-center space-x-3 text-cyber-cyan font-orbitron font-bold text-sm">
+                        <i class="fa-solid fa-robot text-xl animate-pulse"></i>
+                        <span>AI DIAGNOSTIC REPORT GENERATED</span>
+                    </div>
+
+                    <div id="ai-output-text" class="text-sm leading-relaxed text-gray-200 space-y-2">
+                        <!-- AI analysis dynamically populates here -->
+                    </div>
+
+                    <div class="pt-3 border-t border-cyber-border/40 flex justify-between items-center">
+                        <span class="text-xs text-gray-400">Estimated Repair Complexity: <strong class="text-amber-400">Moderate</strong></span>
+                        <button onclick="navigateTo('services')" class="cyber-btn-outline px-4 py-2 rounded-lg text-xs">Book Fix Now</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 5: CONTACT & LAB LOCATION ================= -->
+        <section id="page-contact" class="page-section space-y-8">
+            <div class="text-center space-y-3">
+                <h2 class="font-orbitron font-black text-3xl sm:text-4xl text-white">VISIT OUR LAB / CONTACT US</h2>
+                <p class="text-gray-400 text-sm max-w-lg mx-auto">Get in touch with our micro-repair specialists or visit our flagship diagnostic store.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+                <!-- Contact Details -->
+                <div class="lg:col-span-5 glass-panel p-6 sm:p-8 rounded-2xl space-y-6 flex flex-col justify-between">
+                    <div class="space-y-6">
+                        <h3 class="font-orbitron font-bold text-xl text-white">LAB HEADQUARTERS</h3>
+
+                        <div class="space-y-4 text-sm">
+                            <div class="flex items-start space-x-3">
+                                <div class="w-8 h-8 rounded-lg bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan flex items-center justify-center shrink-0 mt-1">
+                                    <i class="fa-solid fa-location-dot"></i>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-white block">Lab Address</span>
+                                    <p class="text-gray-400">Shop #12, Cyber Tech Plaza, Main Boulevard, Tech District</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start space-x-3">
+                                <div class="w-8 h-8 rounded-lg bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan flex items-center justify-center shrink-0 mt-1">
+                                    <i class="fa-brands fa-whatsapp"></i>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-white block">WhatsApp Direct Hotline</span>
+                                    <p class="text-gray-400">+92 300 1234567 / +92 321 9876543</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start space-x-3">
+                                <div class="w-8 h-8 rounded-lg bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan flex items-center justify-center shrink-0 mt-1">
+                                    <i class="fa-solid fa-clock"></i>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-white block">Working Hours</span>
+                                    <p class="text-gray-400">Monday - Saturday: 10:00 AM - 10:00 PM</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Social Icons Box -->
+                    <div class="pt-6 border-t border-cyber-border/40">
+                        <span class="font-orbitron text-xs text-cyber-cyan block mb-3">CONNECT ON SOCIAL MEDIA</span>
+                        <div class="flex space-x-3">
+                            <a href="https://wa.me/923000000000" target="_blank" class="w-10 h-10 rounded-xl glass-panel border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition">
+                                <i class="fa-brands fa-whatsapp text-lg"></i>
+                            </a>
+                            <a href="https://youtube.com" target="_blank" class="w-10 h-10 rounded-xl glass-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition">
+                                <i class="fa-brands fa-youtube text-lg"></i>
+                            </a>
+                            <a href="https://instagram.com" target="_blank" class="w-10 h-10 rounded-xl glass-panel border border-pink-500/40 text-pink-400 hover:bg-pink-500 hover:text-white flex items-center justify-center transition">
+                                <i class="fa-brands fa-instagram text-lg"></i>
+                            </a>
+                            <a href="https://facebook.com" target="_blank" class="w-10 h-10 rounded-xl glass-panel border border-blue-500/40 text-blue-400 hover:bg-blue-500 hover:text-white flex items-center justify-center transition">
+                                <i class="fa-brands fa-facebook-f text-lg"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Location Map Mockup -->
+                <div class="lg:col-span-7 glass-panel-glow p-4 rounded-2xl flex flex-col justify-between min-h-[350px] relative overflow-hidden">
+                    <div class="absolute inset-0 bg-cyber-bg/80 flex items-center justify-center flex-col text-center p-6 space-y-4">
+                        <div class="w-16 h-16 rounded-full bg-cyber-cyan/10 border-2 border-cyber-cyan flex items-center justify-center text-cyber-cyan text-2xl animate-bounce">
+                            <i class="fa-solid fa-map-location-dot"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-orbitron font-bold text-xl text-white">INTERACTIVE LAB MAP</h4>
+                            <p class="text-xs text-gray-400 mt-1 max-w-sm">Locate CyberLab headquarters in central tech arcade. Parking available.</p>
+                        </div>
+                        <a href="https://maps.google.com" target="_blank" class="cyber-btn px-6 py-2.5 rounded-xl text-xs flex items-center space-x-2">
+                            <i class="fa-solid fa-diamond-turn-right"></i>
+                            <span>Open in Google Maps</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Floating WhatsApp Button -->
+    <a href="https://wa.me/923000000000?text=Hello%20CyberLab!%20I%20have%20a%20question." target="_blank" class="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/40 hover:scale-110 transition-transform duration-300 group">
+        <i class="fa-brands fa-whatsapp text-3xl"></i>
+        <span class="absolute right-16 bg-cyber-bg text-emerald-400 border border-emerald-500/40 text-xs font-orbitron px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            Instant WhatsApp Chat
+        </span>
+    </a>
+
+    <!-- Footer -->
+    <footer class="relative z-10 glass-panel border-t border-cyber-border/40 mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center space-y-3">
+            <div class="font-orbitron font-bold text-sm text-cyber-cyan tracking-wider">
+                CYBERLAB 3D © 2026 — NEXT-GEN MOBILE DIAGNOSTICS & REPAIR
+            </div>
+            <p class="text-xs text-gray-500 font-rajdhani">
+                Designed with 3D Cyberpunk Aesthetic & Real-Time Diagnostic Estimator. All device trademarks belong to respective owners.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        let scene, camera, renderer, phoneMesh, particles;
+
+        function init3D() {
+            const container = document.getElementById('threejs-container');
+            
+            // Create Scene & Camera
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+
+            // Renderer Setup
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0x00f2fe, 2, 100);
+            pointLight.position.set(10, 10, 10);
+            scene.add(pointLight);
+
+            // 3D Floating Smartphone Geometry (Holographic representation)
+            const phoneGeometry = new THREE.BoxGeometry(2, 4, 0.2);
+            const phoneMaterial = new THREE.MeshPhongMaterial({
+                color: 0x060913,
+                emissive: 0x00f2fe,
+                emissiveIntensity: 0.2,
+                wireframe: true
+            });
+            phoneMesh = new THREE.Mesh(phoneGeometry, phoneMaterial);
+            scene.add(phoneMesh);
+
+            // Particle Field
+            const particleGeo = new THREE.BufferGeometry();
+            const particleCount = 200;
+            const posArray = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 12;
+            }
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            
+            const particleMat = new THREE.PointsMaterial({
+                size: 0.03,
+                color: 0x00f2fe,
+                transparent: true,
+                opacity: 0.6
+            });
+            particles = new THREE.Points(particleGeo, particleMat);
+            scene.add(particles);
+
+            // Responsive Resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Mouse Movement Interaction
+            document.addEventListener('mousemove', (e) => {
+                const mouseX = (e.clientX / window.innerWidth) - 0.5;
+                const mouseY = (e.clientY / window.innerHeight) - 0.5;
+                if(phoneMesh) {
+                    phoneMesh.rotation.y = mouseX * 2;
+                    phoneMesh.rotation.x = mouseY * 2;
+                }
+            });
+
+            animate3D();
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if(phoneMesh) {
+                phoneMesh.rotation.y += 0.005;
+            }
+            if(particles) {
+                particles.rotation.y -= 0.001;
+            }
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function navigateTo(pageId) {
+            // Hide all pages
+            const pages = document.querySelectorAll('.page-section');
+            pages.forEach(p => p.classList.remove('active'));
+
+            // Show selected page
+            const target = document.getElementById(`page-${pageId}`);
+            if(target) target.classList.add('active');
+
+            // Update Nav Links Active Style
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.classList.remove('text-cyber-cyan', 'border-b-2', 'border-cyber-cyan');
+                link.classList.add('text-gray-300');
+            });
+
+            const activeNav = document.getElementById(`nav-${pageId}`);
+            if(activeNav) {
+                activeNav.classList.remove('text-gray-300');
+                activeNav.classList.add('text-cyber-cyan', 'border-b-2', 'border-cyber-cyan');
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        const modelsByBrand = {
+            apple: [
+                { id: 'iphone14pro', name: 'iPhone 14 Pro / 14 Pro Max' },
+                { id: 'iphone13', name: 'iPhone 13 / 13 Pro' },
+                { id: 'iphone12', name: 'iPhone 12 / 12 Pro' },
+                { id: 'iphone11', name: 'iPhone 11 / 11 Pro' }
+            ],
+            samsung: [
+                { id: 's23ultra', name: 'Galaxy S23 Ultra / S23+' },
+                { id: 's22ultra', name: 'Galaxy S22 Ultra' },
+                { id: 'a54', name: 'Galaxy A54 / A53' }
+            ],
+            xiaomi: [
+                { id: 'mi13', name: 'Xiaomi 13 Pro / 12T' },
+                { id: 'pocox5', name: 'Poco X5 Pro / F4' }
+            ],
+            other: [
+                { id: 'generic', name: 'Other Smartphone Model' }
+            ]
+        };
+
+        const prices = {
+            screen: 90,
+            battery: 35,
+            charging: 25,
+            ic: 80,
+            water: 45,
+            software: 20
+        };
+
+        let selectedBrand = 'apple';
+
+        function selectBrand(brand) {
+            selectedBrand = brand;
+            document.querySelectorAll('.brand-btn').forEach(btn => {
+                btn.classList.remove('border-cyber-cyan');
+                btn.classList.add('border-cyber-border');
+            });
+            document.getElementById(`brand-${brand}`).classList.add('border-cyber-cyan');
+            document.getElementById(`brand-${brand}`).classList.remove('border-cyber-border');
+
+            // Populate models
+            const modelSelect = document.getElementById('model-select');
+            modelSelect.innerHTML = '';
+            modelsByBrand[brand].forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = m.name;
+                modelSelect.appendChild(opt);
+            });
+
+            calculateCost();
+        }
+
+        function calculateCost() {
+            const checkboxes = document.querySelectorAll('.issue-checkbox:checked');
+            let total = 0;
+            checkboxes.forEach(cb => {
+                total += prices[cb.value] || 0;
+            });
+
+            const modelSelect = document.getElementById('model-select');
+            const modelName = modelSelect.options[modelSelect.selectedIndex]?.text || '';
+
+            document.getElementById('summary-brand').textContent = selectedBrand.toUpperCase();
+            document.getElementById('summary-model').textContent = modelName;
+            document.getElementById('total-price').textContent = `$${total}`;
+        }
+
+        function bookRepairViaWhatsApp() {
+            const total = document.getElementById('total-price').textContent;
+            const model = document.getElementById('summary-model').textContent;
+            const msg = `Hello CyberLab! I calculated my repair cost for ${model} (Total estimated: ${total}). I want to book a repair appointment.`;
+            window.open(`https://wa.me/923000000000?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        function fillAISample(text) {
+            document.getElementById('ai-input').value = text;
+        }
+
+        function runAIDiagnosis() {
+            const query = document.getElementById('ai-input').value.trim();
+            if(!query) return;
+
+            const responseBox = document.getElementById('ai-response-box');
+            const outputText = document.getElementById('ai-output-text');
+            
+            responseBox.classList.remove('hidden');
+            outputText.innerHTML = `<p class="animate-pulse text-cyber-cyan"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Analyzing hardware fault signatures with CyberAI Engine...</p>`;
+
+            setTimeout(() => {
+                outputText.innerHTML = `
+                    <p><strong>Primary Diagnosis:</strong> Potential short circuit in logic board display rail or damaged OLED panel substrate.</p>
+                    <p><strong>Recommended Solution:</strong> Ultrasonic cleaning bath + OLED screen replacement.</p>
+                    <p><strong>Estimated Repair Time:</strong> 35 - 45 Minutes in Lab.</p>
+                    <p><strong>Estimated Cost Range:</strong> $60 - $110 (Subject to live component test).</p>
+                `;
+            }, 1200);
+        }
+
+        function trigger3DAction(type) {
+            const output = document.getElementById('3d-diag-output');
+            if(type === 'screen') {
+                output.innerHTML = `<span><i class="fa-solid fa-mobile-screen text-cyber-cyan mr-1.5"></i> OLED Matrix: 100% Touch Responsive</span><span class="text-emerald-400 font-bold">PASSED</span>`;
+            } else if(type === 'battery') {
+                output.innerHTML = `<span><i class="fa-solid fa-battery-full text-emerald-400 mr-1.5"></i> Battery Cycles: 120 | Health: 98%</span><span class="text-emerald-400 font-bold">GOOD</span>`;
+            } else if(type === 'chip') {
+                output.innerHTML = `<span><i class="fa-solid fa-microchip text-cyber-cyan mr-1.5"></i> Main Logic IC: Normal Thermal Index</span><span class="text-emerald-400 font-bold">OPTIMAL</span>`;
+            }
+        }
+
+        function trackOrder() {
+            const id = document.getElementById('tracker-input').value.trim().toUpperCase();
+            if(id) {
+                document.getElementById('order-id-display').textContent = id;
+            }
+        }
+
+        // Window Load Initialization
+        window.onload = function() {
+            init3D();
+            calculateCost();
+        };
+    </script>
+</body>
+</html>
